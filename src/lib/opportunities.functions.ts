@@ -11,7 +11,11 @@ const OppsSchema = z.object({
       problem: z.string(),
       target_user: z.string(),
       value_prop: z.string(),
-      source_insight_indexes: z.array(z.coerce.number()),
+      // String, not number: the model's structured-output validator enforces the
+      // JSON Schema type server-side, and this field comes back as numeric strings
+      // ("0") often enough that a strict `number` type gets rejected upstream
+      // before we ever see the payload. Parse to a number ourselves below instead.
+      source_insight_indexes: z.array(z.string()),
     }),
   ),
 });
@@ -109,7 +113,7 @@ Rules:
       target_user: o.target_user,
       value_prop: o.value_prop,
       source_insight_ids: o.source_insight_indexes
-        .map((i) => approved[i]?.id)
+        .map((i) => approved[Number(i)]?.id)
         .filter((v): v is string => !!v),
       status: "proposed" as const,
     }));
