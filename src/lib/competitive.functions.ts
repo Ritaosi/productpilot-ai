@@ -59,8 +59,11 @@ async function firecrawlSearch(query: string): Promise<SearchResult[]> {
     const body = await res.text();
     throw new Error(`Firecrawl search failed [${res.status}]: ${body}`);
   }
-  const json: unknown = await res.json();
-  const data = (json as { data?: unknown }).data ?? (json as { web?: unknown }).web ?? [];
+  const json = (await res.json()) as { data?: { web?: unknown } | unknown; web?: unknown };
+  const data =
+    (json.data && typeof json.data === "object" && "web" in json.data
+      ? (json.data as { web?: unknown }).web
+      : json.data) ?? json.web ?? [];
   return Array.isArray(data) ? (data as SearchResult[]) : [];
 }
 
