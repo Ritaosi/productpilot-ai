@@ -10,21 +10,21 @@ const InsightsSchema = z.object({
     z.object({
       title: z.string(),
       description: z.string(),
-      confidence: z.number(),
+      confidence: z.coerce.number(),
     }),
   ),
   user_goals: z.array(
     z.object({
       title: z.string(),
       description: z.string(),
-      confidence: z.number(),
+      confidence: z.coerce.number(),
     }),
   ),
   feature_requests: z.array(
     z.object({
       title: z.string(),
       description: z.string(),
-      confidence: z.number(),
+      confidence: z.coerce.number(),
     }),
   ),
   quotes: z.array(
@@ -33,7 +33,7 @@ const InsightsSchema = z.object({
       quote_text: z.string(),
       speaker: z.string(),
       sentiment: z.string(),
-      confidence: z.number(),
+      confidence: z.coerce.number(),
     }),
   ),
 });

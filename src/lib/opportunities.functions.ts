@@ -11,7 +11,7 @@ const OppsSchema = z.object({
       problem: z.string(),
       target_user: z.string(),
       value_prop: z.string(),
-      source_insight_indexes: z.array(z.number()),
+      source_insight_indexes: z.array(z.coerce.number()),
     }),
   ),
 });
