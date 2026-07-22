@@ -882,11 +882,19 @@ type PRDSectionsShape = {
   [key: string]: unknown;
 };
 
-// jsPDF's built-in fonts (helvetica/times/courier) only cover WinAnsiEncoding
-// (~Latin-1 + a few extras like curly quotes and the bullet used below).
-// AI-generated text regularly includes symbols outside that set (≤/≥,
-// arrows, checkmarks), which jsPDF silently renders as garbage instead of
-// throwing — so replace the common offenders and drop anything else unsupported.
+// jsPDF's built-in fonts (helvetica/times/courier) render Latin-1 (U+0000-
+// U+00FF) plus the Windows-1252 "extra" block (curly quotes, dashes, bullet,
+// trademark, etc. — verified empirically) correctly. Anything else, e.g. the
+// ≤/≥/arrow/checkmark symbols AI generation likes to produce, silently
+// renders as a garbled/wrong glyph instead of erroring. Replace the known
+// offenders explicitly; anything still unrecognized falls back to a space
+// (never deletion) so an unmapped glyph can't fuse two words together
+// (e.g. "error-prone" -> "errorprone").
+const WINANSI_EXTRA_CODEPOINTS = new Set([
+  0x20ac, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030,
+  0x0160, 0x2039, 0x0152, 0x017d, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022,
+  0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x017e, 0x0178,
+]);
 const PDF_CHAR_REPLACEMENTS: Record<string, string> = {
   "≤": "<=",
   "≥": ">=",
@@ -895,12 +903,19 @@ const PDF_CHAR_REPLACEMENTS: Record<string, string> = {
   "✓": "[x]",
   "✗": "[ ]",
   "±": "+/-",
-  "…": "...",
+  "‐": "-", // hyphen
+  "‑": "-", // non-breaking hyphen
+  "‒": "-", // figure dash
+  "−": "-", // minus sign
 };
 function sanitizePdfText(text: string): string {
-  return text
-    .replace(/[≤≥→←✓✗±…]/g, (ch) => PDF_CHAR_REPLACEMENTS[ch])
-    .replace(/[^\x00-\xFF]/g, "");
+  return Array.from(text)
+    .map((ch) => {
+      if (ch in PDF_CHAR_REPLACEMENTS) return PDF_CHAR_REPLACEMENTS[ch];
+      const code = ch.codePointAt(0) ?? 0;
+      return code <= 0xff || WINANSI_EXTRA_CODEPOINTS.has(code) ? ch : " ";
+    })
+    .join("");
 }
 
 function downloadPRDAsPDF(title: string, sections: PRDSectionsShape) {
