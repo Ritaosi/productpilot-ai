@@ -882,6 +882,27 @@ type PRDSectionsShape = {
   [key: string]: unknown;
 };
 
+// jsPDF's built-in fonts (helvetica/times/courier) only cover WinAnsiEncoding
+// (~Latin-1 + a few extras like curly quotes and the bullet used below).
+// AI-generated text regularly includes symbols outside that set (≤/≥,
+// arrows, checkmarks), which jsPDF silently renders as garbage instead of
+// throwing — so replace the common offenders and drop anything else unsupported.
+const PDF_CHAR_REPLACEMENTS: Record<string, string> = {
+  "≤": "<=",
+  "≥": ">=",
+  "→": "->",
+  "←": "<-",
+  "✓": "[x]",
+  "✗": "[ ]",
+  "±": "+/-",
+  "…": "...",
+};
+function sanitizePdfText(text: string): string {
+  return text
+    .replace(/[≤≥→←✓✗±…]/g, (ch) => PDF_CHAR_REPLACEMENTS[ch])
+    .replace(/[^\x00-\xFF]/g, "");
+}
+
 function downloadPRDAsPDF(title: string, sections: PRDSectionsShape) {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   const margin = 54;
@@ -900,7 +921,7 @@ function downloadPRDAsPDF(title: string, sections: PRDSectionsShape) {
     if (!text) return;
     doc.setFont("helvetica", style);
     doc.setFontSize(size);
-    const lines = doc.splitTextToSize(text, maxWidth) as string[];
+    const lines = doc.splitTextToSize(sanitizePdfText(text), maxWidth) as string[];
     const lineHeight = size * 1.35;
     for (const line of lines) {
       ensureSpace(lineHeight);
